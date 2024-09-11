@@ -3,7 +3,10 @@
 #include "atlwin.h"
 #include "windows.h"
 #include "gdiplus.h"
+#include <algorithm>
+
 #define _USE_MATH_DEFINES
+
 #include <math.h>
 
 using namespace Gdiplus;
@@ -12,8 +15,8 @@ using namespace Gdiplus;
 #define ID_ACCEL_RIGHT 5002
 
 ACCEL accelTable[] = {
-        { FSHIFT | FVIRTKEY, VK_LEFT,  ID_ACCEL_LEFT},
-        { FSHIFT | FVIRTKEY, VK_RIGHT, ID_ACCEL_RIGHT}
+        {FSHIFT | FVIRTKEY, VK_LEFT,  ID_ACCEL_LEFT},
+        {FSHIFT | FVIRTKEY, VK_RIGHT, ID_ACCEL_RIGHT}
 };
 
 const int IMAGE_WIDTH = 200;
@@ -28,8 +31,9 @@ Image *clickedImage = nullptr;
 bool isImageDragging = false;
 bool isImageChanged = false;
 
-int imageX = 50;
-int imageY = 50;
+int imageCenterX = 150;
+int imageCenterY = 150;
+
 int angle = 0;
 
 Image *LoadImageFromFile(const std::wstring &filePath) {
@@ -53,21 +57,98 @@ void UpdateSpritePosition(HWND hWnd) {
 
 bool IsEnglishKeyboardLayout() {
     HKL layout = GetKeyboardLayout(0);
-    return LOWORD(layout) == 0x409;  // 0x409 — код английского (США) языка
+    return LOWORD(layout) == 0x409;
 }
 
-void CheckWindowBounds(HWND hWnd) {
+float findMinElement(float arr[], int size) {
+    float minElement = arr[0];
+
+    for (int i = 1; i < size; ++i) {
+        if (arr[i] < minElement) {
+            minElement = arr[i];
+        }
+    }
+
+    return minElement;
+}
+
+float findMaxElement(float arr[], int size) {
+    float maxElement = arr[0];
+
+    for (int i = 1; i < size; ++i) {
+        if (arr[i] > maxElement) {
+            maxElement = arr[i];
+        }
+    }
+
+    return maxElement;
+}
+
+
+void RotatePoints(float &x, float &y, int centerX, int centerY, int angle) {
+
+    float angleRadians = angle * static_cast<float>(M_PI) / 180.0f;
+
+    float dx = x - centerX;
+    float dy = y - centerY;
+
+    float angleCos = cos(angleRadians);
+    float angleSin = sin(angleRadians);
+
+    float newX = dx * angleCos - dy * angleSin;
+    float newY = dx * angleSin + dy * angleCos;
+
+    x = newX + centerX;
+    y = newY + centerY;
+}
+
+bool CheckMouseCoordinates(float mouseX, float mouseY) {
+    RotatePoints(mouseX, mouseY, imageCenterX, imageCenterY, -angle);
+
+    return (mouseX >= imageCenterX - IMAGE_WIDTH / 2 && mouseX <= imageCenterX + IMAGE_WIDTH / 2 &&
+            mouseY >= imageCenterY - IMAGE_HEIGHT / 2 && mouseY <= imageCenterY + IMAGE_HEIGHT / 2);
+
+}
+
+void CheckRotatedSquareBounds(HWND hWnd) {
     RECT clientRect;
     GetClientRect(hWnd, &clientRect);
 
-    if (imageX < 0) imageX = 0;
-    if (imageY < 0) imageY = 0;
-    if (imageX + IMAGE_WIDTH > clientRect.right) {
-        imageX = clientRect.right - IMAGE_WIDTH;
+    float topLeftX = imageCenterX - IMAGE_WIDTH / 2;
+    float topLeftY = imageCenterY - IMAGE_HEIGHT / 2;
+
+    float topRightX = imageCenterX + IMAGE_WIDTH / 2;
+    float topRightY = imageCenterY - IMAGE_HEIGHT / 2;
+
+    float bottomLeftX = imageCenterX - IMAGE_WIDTH / 2;
+    float bottomLeftY = imageCenterY + IMAGE_HEIGHT / 2;
+
+    float bottomRightX = imageCenterX + IMAGE_WIDTH / 2;
+    float bottomRightY = imageCenterY + IMAGE_HEIGHT / 2;
+
+    RotatePoints(topLeftX, topLeftY, imageCenterX, imageCenterY, angle);
+    RotatePoints(topRightX, topRightY, imageCenterX, imageCenterY, angle);
+    RotatePoints(bottomLeftX, bottomLeftY, imageCenterX, imageCenterY, angle);
+    RotatePoints(bottomRightX, bottomRightY, imageCenterX, imageCenterY, angle);
+
+    float minX = findMinElement(new float[]{topLeftX, topRightX, bottomLeftX, bottomRightX}, 4);
+    float minY = findMinElement(new float[]{topLeftY, topRightY, bottomLeftY, bottomRightY}, 4);
+    float maxX = findMaxElement(new float[]{topLeftX, topRightX, bottomLeftX, bottomRightX}, 4);
+    float maxY = findMaxElement(new float[]{topLeftY, topRightY, bottomLeftY, bottomRightY}, 4);
+
+    if (minX < 0) {
+        imageCenterX += -minX;
     }
-    if (imageY + IMAGE_HEIGHT > clientRect.bottom) {
-        imageY = clientRect.bottom - IMAGE_HEIGHT;
+    if (maxX > clientRect.right) {
+        imageCenterX -= (maxX - clientRect.right);
     }
+    if (minY < 0) {
+        imageCenterY += -minY;
+    }
+    if (maxY > clientRect.bottom) {
+        imageCenterY -= (maxY - clientRect.bottom);
+    }
+
 }
 
 // Обработчик сообщений окна
@@ -100,19 +181,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
             FillRect(memDC, &ps.rcPaint, hBrush);
             DeleteObject(hBrush);
 
-            float centerX = imageX + IMAGE_WIDTH / 2.0f;
-            float centerY = imageY + IMAGE_HEIGHT / 2.0f;
-
-            graphics.TranslateTransform(centerX, centerY);
+            graphics.TranslateTransform(imageCenterX, imageCenterY);
             graphics.RotateTransform(angle);
-            graphics.TranslateTransform(-centerX, -centerY);
+            graphics.TranslateTransform(-imageCenterX, -imageCenterY);
 
             if (isImageChanged && clickedImage) {
-                graphics.DrawImage(clickedImage, imageX, imageY, IMAGE_WIDTH, IMAGE_HEIGHT);
+                graphics.DrawImage(clickedImage, imageCenterX - IMAGE_WIDTH / 2, imageCenterY - IMAGE_HEIGHT / 2,
+                                   IMAGE_WIDTH, IMAGE_HEIGHT);
             } else if (normalImage) {
-                graphics.DrawImage(normalImage, imageX, imageY, IMAGE_WIDTH, IMAGE_HEIGHT);
+                graphics.DrawImage(normalImage, imageCenterX - IMAGE_WIDTH / 2, imageCenterY - IMAGE_HEIGHT / 2,
+                                   IMAGE_WIDTH, IMAGE_HEIGHT);
             }
-
 
 
             BitBlt(hdc, ps.rcPaint.left, ps.rcPaint.top, ps.rcPaint.right - ps.rcPaint.left,
@@ -129,8 +208,8 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         case WM_LBUTTONDOWN: {
             int mouseX = LOWORD(lParam);
             int mouseY = HIWORD(lParam);
-            if (mouseX >= imageX && mouseX <= imageX + IMAGE_WIDTH &&
-                mouseY >= imageY && mouseY <= imageY + IMAGE_HEIGHT) {
+
+            if (CheckMouseCoordinates(mouseX, mouseY)) {
                 isImageChanged = true;
                 isImageDragging = true;
             }
@@ -145,17 +224,17 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         }
         case WM_MOUSEMOVE: {
             if (isImageDragging) {
-                imageX = LOWORD(lParam) - DRAGGING_OFFSET;
-                imageY = HIWORD(lParam) - DRAGGING_OFFSET;
+                imageCenterX = LOWORD(lParam) - DRAGGING_OFFSET;
+                imageCenterY = HIWORD(lParam) - DRAGGING_OFFSET;
 
-                CheckWindowBounds(hWnd);
+                CheckRotatedSquareBounds(hWnd);
 
                 UpdateSpritePosition(hWnd);
             }
             break;
         }
         case WM_KEYDOWN: {
-//TODO change
+
             if (!IsEnglishKeyboardLayout()) {
                 break;
             }
@@ -163,22 +242,23 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
             switch (wParam) {
                 case 'W':  // Вверх
                 case VK_UP:
-                    imageY -= MOVE_SPEED;
+                    imageCenterY -= MOVE_SPEED;
                     break;
                 case 'S':  // Вниз
                 case VK_DOWN:
-                    imageY += MOVE_SPEED;
+                    imageCenterY += MOVE_SPEED;
                     break;
                 case 'A':  // Влево
                 case VK_LEFT:
-                    imageX -= MOVE_SPEED;
+                    imageCenterX -= MOVE_SPEED;
                     break;
                 case 'D':  // Вправо
                 case VK_RIGHT:
-                    imageX += MOVE_SPEED;
+                    imageCenterX += MOVE_SPEED;
                     break;
                 case VK_ESCAPE: {
-                    int result = MessageBox(hWnd, "Are you sure you want to exit", "Confirmation of exit", MB_YESNO | MB_ICONQUESTION);
+                    int result = MessageBox(hWnd, "Are you sure you want to exit", "Confirmation of exit",
+                                            MB_YESNO | MB_ICONQUESTION);
                     if (result == IDYES) {
                         PostQuitMessage(0);
                     }
@@ -186,7 +266,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
                 }
             }
 
-            CheckWindowBounds(hWnd);
+            CheckRotatedSquareBounds(hWnd);
 
             UpdateSpritePosition(hWnd);
             break;
@@ -195,12 +275,13 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
             int zDelta = GET_WHEEL_DELTA_WPARAM(wParam);
 
             if (GetKeyState(VK_SHIFT) & 0x8000) {
-                imageX += (zDelta > 0 ? -MOVE_SPEED : MOVE_SPEED);
+                imageCenterX += (zDelta > 0 ? -MOVE_SPEED : MOVE_SPEED);
             } else {
-                imageY += (zDelta > 0 ? -MOVE_SPEED : MOVE_SPEED);
+                imageCenterY += (zDelta > 0 ? -MOVE_SPEED : MOVE_SPEED);
             }
 
-            CheckWindowBounds(hWnd);
+            CheckRotatedSquareBounds(hWnd);
+
             UpdateSpritePosition(hWnd);
             break;
         }
