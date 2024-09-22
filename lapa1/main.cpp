@@ -11,12 +11,12 @@
 
 using namespace Gdiplus;
 
-#define ID_ACCEL_LEFT  5001
-#define ID_ACCEL_RIGHT 5002
+#define ID_ROTATE_LEFT  5001
+#define ID_ROTATE_RIGHT 5002
 
 ACCEL accelTable[] = {
-        {FSHIFT | FVIRTKEY, VK_LEFT,  ID_ACCEL_LEFT},
-        {FSHIFT | FVIRTKEY, VK_RIGHT, ID_ACCEL_RIGHT}
+        {FSHIFT | FVIRTKEY, VK_LEFT,  ID_ROTATE_LEFT},
+        {FSHIFT | FVIRTKEY, VK_RIGHT, ID_ROTATE_RIGHT}
 };
 
 const int IMAGE_WIDTH = 200;
@@ -84,20 +84,6 @@ float findMaxElement(float arr[], int size) {
     return maxElement;
 }
 
-double TriangleArea(POINT A, POINT B, POINT C) {
-    return 0.5 * abs(A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y));
-}
-
-bool IsPointInTriangle(POINT P, POINT A, POINT B, POINT C) {
-    double areaABC = TriangleArea(A, B, C);
-
-    double areaPAB = TriangleArea(P, A, B);
-    double areaPBC = TriangleArea(P, B, C);
-    double areaPCA = TriangleArea(P, C, A);
-
-    return fabs(areaABC - (areaPAB + areaPBC + areaPCA)) < 1e-5;
-}
-
 void RotatePoints(float &x, float &y, int centerX, int centerY, int angle) {
     float angleRadians = angle * static_cast<float>(M_PI) / 180.0f;
 
@@ -113,6 +99,52 @@ void RotatePoints(float &x, float &y, int centerX, int centerY, int angle) {
     x = newX + centerX;
     y = newY + centerY;
 }
+
+double TriangleArea(POINT A, POINT B, POINT C) {
+    return 0.5 * abs(A.x * (B.y - C.y) + B.x * (C.y - A.y) + C.x * (A.y - B.y));
+}
+
+bool IsPointInTriangle(POINT P, POINT A, POINT B, POINT C) {
+    double areaABC = TriangleArea(A, B, C);
+
+    double areaPAB = TriangleArea(P, A, B);
+    double areaPBC = TriangleArea(P, B, C);
+    double areaPCA = TriangleArea(P, C, A);
+
+    return abs(areaABC - (areaPAB + areaPBC + areaPCA)) < 1e-5;
+}
+
+void calculateTrianglePoints(POINT points[3], int centerX, int centerY, double angle) {
+
+    points[0] = {0, (LONG) (-IMAGE_HEIGHT / 2)};
+    points[1] = {(LONG) (-IMAGE_WIDTH / 2), (LONG) (IMAGE_HEIGHT / 2)};
+    points[2] = {(LONG) (IMAGE_WIDTH / 2), (LONG) (IMAGE_HEIGHT / 2)};
+
+    double angleRadians = angle * static_cast<float>(M_PI) / 180.0f;
+
+    for (int i = 0; i < 3; ++i) {
+        double x = points[i].x * cos(angleRadians) - points[i].y * sin(angleRadians);
+        double y = points[i].x * sin(angleRadians) + points[i].y * cos(angleRadians);
+        points[i].x = (LONG) (centerX + x);
+        points[i].y = (LONG) (centerY + y);
+    }
+}
+
+void CheckTriangleBounds(HWND hWnd) {
+    RECT clientRect;
+    GetClientRect(hWnd, &clientRect);
+
+    POINT points[3];
+    calculateTrianglePoints(points, imageCenterX, imageCenterY, angle);
+
+    for (int i = 0; i < 3; ++i) {
+        if (points[i].x < 0) imageCenterX += MOVE_SPEED;
+        if (points[i].x > clientRect.right) imageCenterX -= MOVE_SPEED;
+        if (points[i].y < 0) imageCenterY += MOVE_SPEED;
+        if (points[i].y > clientRect.bottom) imageCenterY -= MOVE_SPEED;
+    }
+}
+
 
 bool CheckMouseCoordinatesForSquare(float mouseX, float mouseY) {
     RotatePoints(mouseX, mouseY, imageCenterX, imageCenterY, -angle);
@@ -161,37 +193,6 @@ void CheckRotatedSquareBounds(HWND hWnd) {
         imageCenterY -= (maxY - clientRect.bottom);
     }
 
-}
-
-void calculateTrianglePoints(POINT points[3], int centerX, int centerY, double angle) {
-
-    points[0] = {0, (LONG) (-IMAGE_HEIGHT / 2)};
-    points[1] = {(LONG) (-IMAGE_WIDTH / 2), (LONG) (IMAGE_HEIGHT / 2)};
-    points[2] = {(LONG) (IMAGE_WIDTH / 2), (LONG) (IMAGE_HEIGHT / 2)};
-
-    float angleRadians = angle * static_cast<float>(M_PI) / 180.0f;
-
-    for (int i = 0; i < 3; ++i) {
-        double x = points[i].x * cos(angleRadians) - points[i].y * sin(angleRadians);
-        double y = points[i].x * sin(angleRadians) + points[i].y * cos(angleRadians);
-        points[i].x = (LONG) (centerX + x);
-        points[i].y = (LONG) (centerY + y);
-    }
-}
-
-void CheckTriangleBounds(HWND hWnd) {
-    RECT clientRect;
-    GetClientRect(hWnd, &clientRect);
-
-    POINT points[3];
-    calculateTrianglePoints(points, imageCenterX, imageCenterY, angle);
-
-    for (int i = 0; i < 3; ++i) {
-        if (points[i].x < 0) imageCenterX += MOVE_SPEED;
-        if (points[i].x > clientRect.right) imageCenterX -= MOVE_SPEED;
-        if (points[i].y < 0) imageCenterY += MOVE_SPEED;
-        if (points[i].y > clientRect.bottom) imageCenterY -= MOVE_SPEED;
-    }
 }
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
@@ -325,7 +326,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
                     imageCenterX += MOVE_SPEED;
                     break;
                 case VK_ESCAPE: {
-                    int result = MessageBox(hWnd, "Are you sure you want to exit", "Confirmation of exit",
+                    int result = MessageBox(hWnd, "Are you sure you want to exit", "Exit Confirmation",
                                             MB_YESNO | MB_ICONQUESTION);
                     if (result == IDYES) {
                         PostQuitMessage(0);
@@ -361,11 +362,11 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message,
         }
         case WM_COMMAND: {
             switch (LOWORD(wParam)) {
-                case ID_ACCEL_LEFT:
+                case ID_ROTATE_LEFT:
                     angle -= 5;
                     if (angle < 0) angle += 360;
                     break;
-                case ID_ACCEL_RIGHT:
+                case ID_ROTATE_RIGHT:
                     angle += 5;
                     if (angle >= 360) angle -= 360;
                     break;

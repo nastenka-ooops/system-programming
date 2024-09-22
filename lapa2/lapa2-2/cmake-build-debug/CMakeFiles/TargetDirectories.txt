@@ -1,0 +1,3 @@
+C:/Users/madam/CLionProjects/sys-prog/lapa2/lapa2-2/cmake-build-debug/CMakeFiles/lapa2_2.dir
+C:/Users/madam/CLionProjects/sys-prog/lapa2/lapa2-2/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/madam/CLionProjects/sys-prog/lapa2/lapa2-2/cmake-build-debug/CMakeFiles/rebuild_cache.dir
