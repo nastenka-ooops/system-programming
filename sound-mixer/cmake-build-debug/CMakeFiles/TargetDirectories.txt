@@ -1,0 +1,3 @@
+C:/Users/madam/CLionProjects/sys-prog/sound-mixer/cmake-build-debug/CMakeFiles/sound_mixer.dir
+C:/Users/madam/CLionProjects/sys-prog/sound-mixer/cmake-build-debug/CMakeFiles/edit_cache.dir
+C:/Users/madam/CLionProjects/sys-prog/sound-mixer/cmake-build-debug/CMakeFiles/rebuild_cache.dir
