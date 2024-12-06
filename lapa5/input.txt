@@ -1,0 +1,416 @@
+#include <windows.h>
+#include <string>
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <thread>
+#include <cstdint>
+#include <mutex>
+#include <queue>
+
+
+
+HWND hButton1, hButton2, hRadio1, hRadio2;
+wchar_t fileName[MAX_PATH] = L"";
+
+std::mutex queueMutex;
+std::condition_variable queueCondVar;
+std::queue<std::pair<int, std::string>> taskQueue; // Пара <индекс строки, строка>
+bool finishedReading = false;
+// BMP-заголовок
+#pragma pack(push, 1)  // Отключаем выравнивание
+struct BMPHeader {
+    uint16_t fileType;
+    uint32_t fileSize;
+    uint32_t reserved;
+    uint32_t dataOffset;
+    uint32_t headerSize;
+    int32_t  width;
+    int32_t  height;
+    uint16_t planes;
+    uint16_t bitsPerPixel;
+    uint32_t compression;
+    uint32_t imageSize;
+    int32_t  xPixelsPerMeter;
+    int32_t  yPixelsPerMeter;
+    uint32_t colorsUsed;
+    uint32_t importantColors;
+};
+#pragma pack(pop)  // Восстанавливаем выравнивание
+
+
+// Функция для чтения файла и создания задач с индексами строк
+void readFileAndCreateTasks(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file) {
+        std::cerr << "Ошибка при открытии файла " << filename << std::endl;
+        return;
+    }
+
+    std::string line;
+    int lineIndex = 0;
+    while (std::getline(file, line)) {
+        std::unique_lock<std::mutex> lock(queueMutex);
+        taskQueue.push({ lineIndex++, line });
+        queueCondVar.notify_one();  // Уведомляем поток, что появилась новая задача
+    }
+
+    // Устанавливаем флаг завершения чтения
+    {
+        std::lock_guard<std::mutex> lock(queueMutex);
+        finishedReading = true;
+    }
+    queueCondVar.notify_all();  // Уведомляем все потоки, что чтение завершено
+}
+
+// Функция сортировки строки из очереди с учетом индекса строки
+void sortTask(std::vector<std::pair<int, std::string>>& sortedLines) {
+    while (true) {
+        std::unique_lock<std::mutex> lock(queueMutex);
+
+        // Ожидание задачи или завершения
+        queueCondVar.wait(lock, [] { return !taskQueue.empty() || finishedReading; });
+
+        if (taskQueue.empty() && finishedReading) {
+            break;  // Завершаем поток, если задач больше нет и чтение завершено
+        }
+
+        if (!taskQueue.empty()) {
+            // Извлекаем задачу
+            auto task = taskQueue.front();
+            taskQueue.pop();
+            lock.unlock();
+
+            // Сортируем строку
+            std::sort(task.second.begin(), task.second.end());
+
+            // Добавляем результат с индексом в общий вектор
+            std::lock_guard<std::mutex> sortedLock(queueMutex);
+            sortedLines.push_back(task);
+        }
+    }
+}
+
+// Главная функция для запуска сортировки с сохранением порядка строк
+void sortFileLines(const std::string& inputFileName, const std::string& outputFileName) {
+    std::vector<std::thread> sortThreads;
+    std::vector<std::pair<int, std::string>> sortedLines;
+
+    // Запускаем поток для чтения
+    std::thread readerThread(readFileAndCreateTasks, inputFileName);
+
+    // Создаем потоки для обработки задач
+    int numThreads = std::thread::hardware_concurrency();
+    for (int i = 0; i < numThreads; ++i) {
+        sortThreads.emplace_back(sortTask, std::ref(sortedLines));
+    }
+
+    // Ожидаем завершения чтения
+    readerThread.join();
+
+    // Ожидаем завершения всех потоков сортировки
+    for (auto& thread : sortThreads) {
+        thread.join();
+    }
+
+    // Сортируем `sortedLines` по индексу строки для восстановления исходного порядка
+    std::sort(sortedLines.begin(), sortedLines.end(), [](const auto& a, const auto& b) {
+        return a.first < b.first;
+        });
+
+    // Записываем отсортированные строки в выходной файл
+    std::ofstream outputFile(outputFileName);
+    if (!outputFile) {
+        std::cerr << "file open fail " << outputFileName << std::endl;
+        return;
+    }
+
+    for (const auto& pair : sortedLines) {
+        outputFile << pair.second << "\n"; // pair.first — это index, pair.second — строка line
+    }
+
+
+    std::cout << "end." << std::endl;
+}
+
+
+
+// Структура для представления RGB пикселя
+struct RGB {
+    uint8_t blue;
+    uint8_t green;
+    uint8_t red;
+};
+
+// Функция для чтения BMP заголовка
+bool readBMPHeader(std::ifstream& file, BMPHeader& header) {
+    file.read(reinterpret_cast<char*>(&header), sizeof(BMPHeader));
+    return file && header.fileType == 0x4D42;  // Проверка на "BM"
+}
+
+// Функция для вычисления среднего цвета 2x2 блока
+RGB averageColor(const RGB& p1, const RGB& p2, const RGB& p3, const RGB& p4) {
+    return {
+        static_cast<uint8_t>((p1.blue + p2.blue + p3.blue + p4.blue) / 4),
+        static_cast<uint8_t>((p1.green + p2.green + p3.green + p4.green) / 4),
+        static_cast<uint8_t>((p1.red + p2.red + p3.red + p4.red) / 4)
+    };
+}
+
+// Функция обработки блоков 2x2 пикселей
+void processBlock(int startY, int endY, int width, int height, const std::vector<RGB>& inputPixels, std::vector<RGB>& outputPixels) {
+    for (int y = startY; y < endY; y += 2) {
+        for (int x = 0; x < width; x += 2) {
+            if (y + 1 >= height || x + 1 >= width) continue;
+
+            int idx1 = y * width + x;
+            int idx2 = y * width + (x + 1);
+            int idx3 = (y + 1) * width + x;
+            int idx4 = (y + 1) * width + (x + 1);
+
+            // Средний цвет блока 2x2
+            RGB avgColor = averageColor(inputPixels[idx1], inputPixels[idx2], inputPixels[idx3], inputPixels[idx4]);
+
+            // Установка среднего цвета в соответствующем месте в выходном изображении
+            int outIdx = (y / 2) * (width / 2) + (x / 2);
+            outputPixels[outIdx] = avgColor;
+        }
+    }
+}
+
+// Главная функция для параллельного сжатия BMP файла
+void compressBMP(const std::string& inputFileName, const std::string& outputFileName) {
+    // Открываем входной файл
+    std::ifstream inputFile(inputFileName, std::ios::binary);
+    if (!inputFile) {
+        std::cerr << "Ошибка при открытии файла " << inputFileName << std::endl;
+        return;
+    }
+
+    // Читаем заголовок BMP
+    BMPHeader header;
+    if (!readBMPHeader(inputFile, header)) {
+        std::cerr << "Неверный формат BMP файла" << std::endl;
+        return;
+    }
+
+    // Получаем размеры изображения и проверяем, что оно делится на 2x2
+    int width = header.width;
+    int height = header.height;
+    if (width % 2 != 0 || height % 2 != 0) {
+        std::cerr << "Размер изображения должен быть кратен 2" << std::endl;
+        return;
+    }
+
+    // Переходим к пиксельным данным
+    inputFile.seekg(header.dataOffset, std::ios::beg);
+    std::vector<RGB> inputPixels(width * height);
+    inputFile.read(reinterpret_cast<char*>(inputPixels.data()), inputPixels.size() * sizeof(RGB));
+    inputFile.close();
+
+    // Выходной массив пикселей для сжатого изображения
+    int newWidth = width / 2;
+    int newHeight = height / 2;
+    std::vector<RGB> outputPixels(newWidth * newHeight);
+
+    // Определяем количество потоков и делим изображение на части
+    int numThreads = std::thread::hardware_concurrency();
+    int rowsPerThread = height / numThreads;
+
+    std::vector<std::thread> threads;
+    for (int i = 0; i < numThreads; ++i) {
+        int startY = i * rowsPerThread;
+        int endY = (i == numThreads - 1) ? height : (i + 1) * rowsPerThread;
+        threads.emplace_back(processBlock, startY, endY, width, height, std::ref(inputPixels), std::ref(outputPixels));
+    }
+
+    // Ожидаем завершения всех потоков
+    for (auto& t : threads) {
+        t.join();
+    }
+
+    // Запись нового файла
+    std::ofstream outputFile(outputFileName, std::ios::binary);
+    if (!outputFile) {
+        std::cerr << "Ошибка при открытии выходного файла " << outputFileName << std::endl;
+        return;
+    }
+
+    // Изменяем заголовок для новых размеров
+    header.width = newWidth;
+    header.height = newHeight;
+    header.imageSize = outputPixels.size() * sizeof(RGB);
+    header.fileSize = header.dataOffset + header.imageSize;
+
+    // Записываем заголовок и пиксели
+    outputFile.write(reinterpret_cast<const char*>(&header), sizeof(BMPHeader));
+    outputFile.write(reinterpret_cast<const char*>(outputPixels.data()), outputPixels.size() * sizeof(RGB));
+    outputFile.close();
+    std::cout << "Сжатие BMP завершено." << std::endl;
+}
+
+std::string ConvertWCharToString(const wchar_t* wstr) {
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, wstr, -1, NULL, 0, NULL, NULL);
+    std::string result(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, wstr, -1, &result[0], size_needed, NULL, NULL);
+    result.resize(size_needed - 1);  // Убираем завершающий нулевой символ
+    return result;
+}
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
+
+
+void ShowFileDialog(HWND hwnd) {
+    OPENFILENAME ofn;       // Структура для параметров окна выбора файла
+    //wchar_t fileName[MAX_PATH] = L"";  // Массив для хранения пути к выбранному файлу
+
+    ZeroMemory(&ofn, sizeof(ofn));
+    ofn.lStructSize = sizeof(ofn);
+    ofn.hwndOwner = hwnd;
+    ofn.lpstrFile = fileName;
+    ofn.nMaxFile = MAX_PATH;
+
+    // Устанавливаем фильтр для типов файлов
+    ofn.lpstrFilter = L"All Files\0*.*\0";
+    ofn.nFilterIndex = 1;
+
+    // Устанавливаем начальную папку и заголовок
+    ofn.lpstrInitialDir = L"E:/5Sem/SP/Lab5/Tests";
+    ofn.lpstrTitle = L"Select a file to open";
+    ofn.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST;
+
+    // Открываем диалог выбора файла
+    if (GetOpenFileName(&ofn) == TRUE) {
+
+    }
+}
+
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    const wchar_t CLASS_NAME[] = L"SampleWindowClass";
+
+    WNDCLASS wc = {};
+    wc.lpfnWndProc = WindowProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = CLASS_NAME;
+    wc.hCursor = LoadCursor(NULL, IDC_ARROW);
+    wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+
+    RegisterClass(&wc);
+
+    HWND hwnd = CreateWindowEx(
+        0,
+        CLASS_NAME,
+        L"WinAPI Example",
+        WS_OVERLAPPEDWINDOW,
+        CW_USEDEFAULT, CW_USEDEFAULT, 300, 200,
+        NULL,
+        NULL,
+        hInstance,
+        NULL
+    );
+
+    if (hwnd == NULL) {
+        return 0;
+    }
+
+    ShowWindow(hwnd, nCmdShow);
+
+    MSG msg = {};
+    while (GetMessage(&msg, NULL, 0, 0)) {
+        TranslateMessage(&msg);
+        DispatchMessage(&msg);
+    }
+
+    return 0;
+}
+
+LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
+    case WM_CREATE:
+        // Создаем первую кнопку
+        hButton1 = CreateWindow(
+            L"BUTTON",
+            L"Выбрать файл",
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+            20, 80, 100, 30,
+            hwnd,
+            (HMENU)1,
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
+            NULL
+        );
+
+        // Создаем вторую кнопку
+        hButton2 = CreateWindow(
+            L"BUTTON",
+            L"Запуск",
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+            20, 120, 100, 30,
+            hwnd,
+            (HMENU)2,
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
+            NULL
+        );
+
+        // Создаем первый радиобаттон, отмеченный как начало группы
+        hRadio1 = CreateWindow(
+            L"BUTTON",
+            L"Сжать bmp",
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON | WS_GROUP,
+            20, 20, 160, 20,
+            hwnd,
+            (HMENU)3,
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
+            NULL
+        );
+
+        // Создаем второй радиобаттон
+        hRadio2 = CreateWindow(
+            L"BUTTON",
+            L"Остортировать файл",
+            WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_RADIOBUTTON,
+            20, 50, 160, 20,
+            hwnd,
+            (HMENU)4,
+            (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE),
+            NULL
+        );
+
+        SendMessage(hRadio1, BM_SETCHECK, BST_CHECKED, 0); // Устанавливаем первую радиокнопку как выбранную
+        break;
+
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case 1: // Обработка нажатия первой кнопки
+            ShowFileDialog(hwnd);
+            break;
+        case 2: // Обработка нажатия второй кнопки
+           if (SendMessage(hRadio1, BM_GETCHECK, 0, 0) == BST_CHECKED)
+           //bmp
+           {
+               compressBMP(ConvertWCharToString(fileName), "output.bmp");
+           }
+           //txt
+           else
+           {
+               sortFileLines(ConvertWCharToString(fileName), "output.txt");
+           }
+        case 3:
+            SendMessage(hRadio1, BM_SETCHECK, BST_CHECKED, 0);
+            SendMessage(hRadio2, BM_SETCHECK, BST_UNCHECKED, 0);
+            break;
+        case 4:
+            SendMessage(hRadio2, BM_SETCHECK, BST_CHECKED, 0);
+            SendMessage(hRadio1, BM_SETCHECK, BST_UNCHECKED, 0);
+            break;
+        }
+        break;
+
+    case WM_DESTROY:
+        PostQuitMessage(0);
+        return 0;
+
+    default:
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+    return 0;
+}

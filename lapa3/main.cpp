@@ -14,24 +14,30 @@ void CreateRegistryKey(const std::string &subKey) {
     }
 }
 
-void SetRegistryValue(const std::string &valueName, DWORD valueData) {
-    LONG result = RegSetValueExA(HKEY_CURRENT_USER, valueName.c_str(), 0, REG_DWORD, (BYTE *) &valueData, sizeof(valueData));
-    if (result == ERROR_SUCCESS) {
-        MessageBoxA(NULL, "The value is set!", "Success", MB_OK | MB_ICONINFORMATION);
-    } else {
-        MessageBoxA(NULL, "Error setting value!", "Fail", MB_OK | MB_ICONERROR);
+void SetRegistryValue(const std::string &subKey, const std::string &valueName, DWORD valueData) {
+    if (RegOpenKeyEx(HKEY_CURRENT_USER, subKey.c_str(), 0, KEY_WRITE, &hKey) == ERROR_SUCCESS) {
+        LONG result = RegSetValueExA(hKey, valueName.c_str(), 0, REG_DWORD, (BYTE *) &valueData, sizeof(valueData));
+        if (result == ERROR_SUCCESS) {
+            MessageBoxA(NULL, "The value is set!", "Success", MB_OK | MB_ICONINFORMATION);
+        } else {
+            MessageBoxA(NULL, "Error setting value!", "Fail", MB_OK | MB_ICONERROR);
+        }
     }
 }
 
-void QueryRegistryValue(const std::string &valueName) {
+void QueryRegistryValue(const std::string &subKey, const std::string &valueName) {
     DWORD data;
     DWORD dataSize = sizeof(data);
-    LONG result = RegQueryValueExA(HKEY_CURRENT_USER, valueName.c_str(), NULL, NULL, (LPBYTE) &data, &dataSize);
-    if (result == ERROR_SUCCESS) {
-        std::string message = "Value: " + std::to_string(data);
-        MessageBoxA(NULL, message.c_str(), "Key value", MB_OK | MB_ICONINFORMATION);
-    } else {
-        MessageBoxA(NULL, "Error getting value!", "Fail", MB_OK | MB_ICONERROR);
+
+    if (RegOpenKeyEx(HKEY_CURRENT_USER, subKey.c_str(), 0, KEY_READ, &hKey) == ERROR_SUCCESS) {
+        LONG result = RegQueryValueEx(hKey, valueName.c_str(), NULL, NULL, (LPBYTE) &data, &dataSize);
+
+        if (result == ERROR_SUCCESS) {
+            std::string message = "Value: " + std::to_string(data);
+            MessageBoxA(NULL, message.c_str(), "Key value", MB_OK | MB_ICONINFORMATION);
+        } else {
+            MessageBoxA(NULL, "Error getting value!", "Fail", MB_OK | MB_ICONERROR);
+        }
     }
 }
 
@@ -47,7 +53,6 @@ void DeleteRegistryKey(const std::string &subKey) {
 LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_CREATE: {
-            // Поля для ввода ключа и значения
             CreateWindow("STATIC", "Registry key:", WS_VISIBLE | WS_CHILD, 20, 20, 100, 20, hwnd, NULL, NULL, NULL);
             hEditKey = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 150, 20, 300, 20, hwnd, NULL, NULL,
                                     NULL);
@@ -60,7 +65,6 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
             hEditValueData = CreateWindow("EDIT", "", WS_VISIBLE | WS_CHILD | WS_BORDER, 150, 100, 300, 20, hwnd, NULL,
                                           NULL, NULL);
 
-            // Кнопки для взаимодействия с реестром
             hButtonCreateKey = CreateWindow("BUTTON", "Create key", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON, 50, 150, 150,
                                             30, hwnd, (HMENU)1, NULL, NULL);
             hButtonSetValue = CreateWindow("BUTTON", "Set value", WS_VISIBLE | WS_CHILD | BS_PUSHBUTTON, 50, 200, 150,
@@ -87,15 +91,19 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
                 case 2: {
                     GetWindowText(hEditValueName, valueNameBuffer, 256);
                     GetWindowText(hEditValueData, valueDataBuffer, 256);
+                    GetWindowText(hEditKey, keyBuffer, 256);
+                    subKey = keyBuffer;
                     valueName = valueNameBuffer;
                     valueData = atoi(valueDataBuffer);
-                    SetRegistryValue(valueName, valueData);
+                    SetRegistryValue(subKey, valueName, valueData);
                     break;
                 }
                 case 3: {
                     GetWindowText(hEditValueName, valueNameBuffer, 256);
+                    GetWindowText(hEditKey, keyBuffer, 256);
+                    subKey = keyBuffer;
                     valueName = valueNameBuffer;
-                    QueryRegistryValue(valueName);
+                    QueryRegistryValue(subKey, valueName);
                     break;
                 }
                 case 4: {

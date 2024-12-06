@@ -55,6 +55,24 @@ build CMakeFiles/sound_mixer.dir/main.cpp.obj: CXX_COMPILER__sound_mixer_unscann
   OBJECT_DIR = CMakeFiles\sound_mixer.dir
   OBJECT_FILE_DIR = CMakeFiles\sound_mixer.dir
 
+build CMakeFiles/sound_mixer.dir/AudioBuffer.cpp.obj: CXX_COMPILER__sound_mixer_unscanned_Debug C$:/Users/madam/CLionProjects/sys-prog/sound-mixer/AudioBuffer.cpp || cmake_object_order_depends_target_sound_mixer
+  DEP_FILE = CMakeFiles\sound_mixer.dir\AudioBuffer.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles\sound_mixer.dir
+  OBJECT_FILE_DIR = CMakeFiles\sound_mixer.dir
+
+build CMakeFiles/sound_mixer.dir/AudioMixer.cpp.obj: CXX_COMPILER__sound_mixer_unscanned_Debug C$:/Users/madam/CLionProjects/sys-prog/sound-mixer/AudioMixer.cpp || cmake_object_order_depends_target_sound_mixer
+  DEP_FILE = CMakeFiles\sound_mixer.dir\AudioMixer.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles\sound_mixer.dir
+  OBJECT_FILE_DIR = CMakeFiles\sound_mixer.dir
+
+build CMakeFiles/sound_mixer.dir/AudioSource.cpp.obj: CXX_COMPILER__sound_mixer_unscanned_Debug C$:/Users/madam/CLionProjects/sys-prog/sound-mixer/AudioSource.cpp || cmake_object_order_depends_target_sound_mixer
+  DEP_FILE = CMakeFiles\sound_mixer.dir\AudioSource.cpp.obj.d
+  FLAGS = -g -std=gnu++20 -fdiagnostics-color=always
+  OBJECT_DIR = CMakeFiles\sound_mixer.dir
+  OBJECT_FILE_DIR = CMakeFiles\sound_mixer.dir
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target sound_mixer
@@ -63,7 +81,7 @@ build CMakeFiles/sound_mixer.dir/main.cpp.obj: CXX_COMPILER__sound_mixer_unscann
 #############################################
 # Link the executable sound_mixer.exe
 
-build sound_mixer.exe: CXX_EXECUTABLE_LINKER__sound_mixer_Debug CMakeFiles/sound_mixer.dir/main.cpp.obj
+build sound_mixer.exe: CXX_EXECUTABLE_LINKER__sound_mixer_Debug CMakeFiles/sound_mixer.dir/main.cpp.obj CMakeFiles/sound_mixer.dir/AudioBuffer.cpp.obj CMakeFiles/sound_mixer.dir/AudioMixer.cpp.obj CMakeFiles/sound_mixer.dir/AudioSource.cpp.obj
   FLAGS = -g
   LINK_LIBRARIES = -lwinmm  -lkernel32 -luser32 -lgdi32 -lwinspool -lshell32 -lole32 -loleaut32 -luuid -lcomdlg32 -ladvapi32
   OBJECT_DIR = CMakeFiles\sound_mixer.dir
