@@ -10,6 +10,7 @@
 #endif // _WIN32
 
 #include <cstdint>
+#include <fstream>
 #include <pthread.h>
 #include <vector>
 
@@ -47,8 +48,8 @@ class AudioMixer {
     pthread_t audioThread;
     volatile bool ready;
 
-    AudioBuffer* outputFileBuffer;
-    bool isRecorded;
+    std::ofstream outputFile;
+    uint32_t totalDataWritten;
 
     bool create(uint32_t sampleRate, uint16_t bitsPerSample, uint16_t channels, uint8_t nblockCount, uint32_t nchunkSize);
     void destroy();
@@ -67,8 +68,8 @@ public:
 
     AudioSource* play(const wchar_t* filename);
 
-    FILE* startRecording(const wchar_t* filename);
-    void stopRecording(FILE* outputFile);
+    bool startRecording(const std::string &filename);
+    void stopRecording();
 };
 
 #endif // __SOUND_MIXER_H__

@@ -1,6 +1,6 @@
 #include "AudioMixer.h"
-
 #include <cstdio>
+#include "Utils.h"
 
 static bool WaveOutSetVolume(HWAVEOUT waveOut, float volume, float pan) {
     const uint16_t leftChannel = (uint16_t) ((float) 0xFFFF * volume * pan);
@@ -43,8 +43,8 @@ void *AudioThreadProc(void *params) {
                 source->stop();
                 if (source->getLoop()) {
                     source->play();
-                    position = source->getPosition();
                 }
+                position = 0;
             } else {
                 position = source->getPosition();
                 float pan = source->getPan();
@@ -68,6 +68,15 @@ void *AudioThreadProc(void *params) {
         for (uint32_t index = 0; index < mixer->blockSize / 2; ++index) {
             ((int16_t *) (mixer->waveHeaderBuffer + mixer->blockIndex * mixer->blockSize))[index] =
                     mixer->accumulator[index] / AUDIO_MIXER_MAX_SOURCE_COUNT;
+        }
+
+        // Запись данных в WAV-файл
+        if (mixer->outputFile.is_open()) {
+            mixer->outputFile.write(
+                (char *) (mixer->waveHeaderBuffer + mixer->blockIndex * mixer->blockSize),
+                mixer->blockSize
+            );
+            mixer->totalDataWritten += mixer->blockSize;
         }
 
         waveOutWrite(mixer->waveOut, &mixer->waveHeaders[mixer->blockIndex], sizeof(WAVEHDR));
@@ -185,19 +194,27 @@ std::vector<AudioSource *> AudioMixer::getSources() {
     return sources;
 }
 
-FILE *AudioMixer::startRecording(const wchar_t *filename) {
-    FILE* outputFile = outputFileBuffer->startSave(filename);
-    if (outputFile != nullptr) {
-        isRecorded = true;
-        return outputFile;
+bool AudioMixer::startRecording(const std::string &filename) {
+    if (outputFile.is_open()) {
+        return false; // Запись уже началась
     }
-    return nullptr;
+
+    outputFile.open(filename, std::ios::binary);
+    if (!outputFile.is_open()) {
+        return false;
+    }
+
+    totalDataWritten = 0;
+
+    // Пропустить 44 байта для заголовка WAV
+    outputFile.seekp(44, std::ios::beg);
+    return true;
 }
 
-void AudioMixer::stopRecording(FILE *outputFile) {
-    if (isRecorded) {
-        fwrite(this->accumulator, sizeof(int16_t), this->blockSize / 2, outputFile);
-        outputFileBuffer->stopSave(outputFile);
-        isRecorded = false;
+void AudioMixer::stopRecording() {
+    if (outputFile.is_open()) {
+        // Обновить заголовок файла с учетом записанных данных
+        WriteWavHeader(outputFile, samplesPerSec, bitsPerSample, channelCount, totalDataWritten);
+        outputFile.close();
     }
 }

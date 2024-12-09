@@ -11,7 +11,11 @@ add_executable(sound_mixer main.cpp
         AudioSource.cpp
         AudioSource.h
         TrackControls.h
-        TrackControls.cpp)
+        TrackControls.cpp
+        AudioRecorder.cpp
+        Utils.cpp
+        Utils.h
+        AudioRecorder.h)
 
 target_link_libraries(sound_mixer winmm)
 

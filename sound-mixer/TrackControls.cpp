@@ -7,7 +7,7 @@
 
 TrackControls::TrackControls(HWND parent, int index, AudioSource *source)
     : hParent(parent), source(source) {
-    int yOffset = 50 + index * 50;
+    int yOffset = 70 + index * 50;
 
     HINSTANCE hInst = (HINSTANCE) GetWindowLongPtr(parent, GWLP_HINSTANCE);
 
@@ -30,38 +30,38 @@ TrackControls::TrackControls(HWND parent, int index, AudioSource *source)
                                 160, yOffset, 50, 30, hParent, (HMENU)stopButtonId, hInst, NULL);
     hPauseButton = CreateWindowW(L"BUTTON", L"Pause", WS_CHILD | WS_VISIBLE,
                                  210, yOffset, 50, 30, hParent, (HMENU)pauseButtonId, hInst, NULL);
-    hLoopButton = CreateWindowW(L"BUTTON", L"LOOP", WS_CHILD | WS_VISIBLE,
+    hLoopButton = CreateWindowW(L"BUTTON", L"LOOP", WS_CHILD | WS_VISIBLE | BS_AUTOCHECKBOX | BS_PUSHLIKE,
                                 260, yOffset, 50, 30, hParent, (HMENU)loopButtonId, hInst, NULL);
 
     // Progress bar with label
     CreateWindowW(L"STATIC", L"Position:", WS_CHILD | WS_VISIBLE,
                   320, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
     hProgressBar = CreateWindowW(L"msctls_trackbar32", NULL, WS_CHILD | WS_VISIBLE,
-                                 320, yOffset, 150, 30, hParent, (HMENU)progressBarId, hInst, NULL);
+                                 320, yOffset, 200, 30, hParent, (HMENU)progressBarId, hInst, NULL);
     SendMessage(hProgressBar, TBM_SETRANGE, TRUE, MAKELPARAM(0, 1000));
     SendMessage(hProgressBar, TBM_SETPOS, TRUE, source->getPosition());
 
     // Volume bar with label
     CreateWindowW(L"STATIC", L"Volume:", WS_CHILD | WS_VISIBLE,
-                  480, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
+                  530, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
     hVolumeBar = CreateWindowW(L"msctls_trackbar32", NULL, WS_CHILD | WS_VISIBLE,
-                               480, yOffset, 150, 30, hParent, (HMENU)volumeBarId, hInst, NULL);
+                               530, yOffset, 200, 30, hParent, (HMENU)volumeBarId, hInst, NULL);
     SendMessage(hVolumeBar, TBM_SETRANGE, TRUE, MAKELPARAM(0, 100));
     SendMessage(hVolumeBar, TBM_SETPOS, TRUE, static_cast<int>(source->getVolume() * 100));
 
     // Speed bar with label
     CreateWindowW(L"STATIC", L"Speed:", WS_CHILD | WS_VISIBLE,
-                  640, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
+                  740, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
     hSpeedBar = CreateWindowW(L"msctls_trackbar32", NULL, WS_CHILD | WS_VISIBLE,
-                              640, yOffset, 150, 30, hParent, (HMENU)speedBarId, hInst, NULL);
+                              740, yOffset, 200, 30, hParent, (HMENU)speedBarId, hInst, NULL);
     SendMessage(hSpeedBar, TBM_SETRANGE, TRUE, MAKELPARAM(500, 2000));
     SendMessage(hSpeedBar, TBM_SETPOS, TRUE, static_cast<int>(source->getSpeed() * 1000));
 
     // Pan bar with label
     CreateWindowW(L"STATIC", L"Pan:", WS_CHILD | WS_VISIBLE,
-                  800, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
+                  950, yOffset - 20, 70, 20, hParent, NULL, hInst, NULL);
     hPanBar = CreateWindowW(L"msctls_trackbar32", NULL, WS_CHILD | WS_VISIBLE,
-                            800, yOffset, 150, 30, hParent, (HMENU)panBarId, hInst, NULL);
+                            950, yOffset, 200, 30, hParent, (HMENU)panBarId, hInst, NULL);
     SendMessage(hPanBar, TBM_SETRANGE, TRUE, MAKELPARAM(0, 100));
     SendMessage(hPanBar, TBM_SETPOS, TRUE, static_cast<int>(source->getPan() * 100));
 }

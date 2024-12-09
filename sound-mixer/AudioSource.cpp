@@ -7,180 +7,179 @@
 #include <algorithm>
 #include <filesystem>
 
-AudioSource::AudioSource(AudioBuffer *newBuffer, const wchar_t* name)
-	: buffer(nullptr), position(0), volume(0.5), pan(0.5f), speed(1.0f), status(STOP), loop(false) {
-	setBuffer(newBuffer);
+AudioSource::AudioSource(AudioBuffer *newBuffer, const wchar_t *name)
+    : buffer(nullptr), position(0), volume(0.5), pan(0.5f), speed(1.0f), status(STOP), loop(false) {
+    setBuffer(newBuffer);
 
-	std::wstring pathStr(name);
+    std::wstring pathStr(name);
 
-	size_t pos = pathStr.find_last_of(L"\\/");
+    size_t pos = pathStr.find_last_of(L"\\/");
 
-	if (pos != std::wstring::npos) {
-		pathStr = pathStr.substr(pos + 1);
-	}
+    if (pos != std::wstring::npos) {
+        pathStr = pathStr.substr(pos + 1);
+    }
 
-	setName(pathStr.data());
+    setName(pathStr.data());
 }
 
 AudioSource::~AudioSource() {
-	setBuffer(nullptr);
+    setBuffer(nullptr);
 }
 
 void AudioSource::setBuffer(AudioBuffer *value) {
-	buffer = value;
-	position = 0;
-	status = STOP;
+    buffer = value;
+    position = 0;
+    status = STOP;
 }
 
 AudioBuffer *AudioSource::getBuffer() const {
-	return buffer;
+    return buffer;
 }
 
 bool AudioSource::play() {
-	switch (status) {
-		case STOP:
-			status = PLAY;
-			position = 0;
-			return true;
-		case PAUSE:
-			status = PLAY;
-			return true;
-	}
-	return false;
+    switch (status) {
+        case STOP:
+            status = PLAY;
+            position = 0;
+            return true;
+        case PAUSE:
+            status = PLAY;
+            return true;
+    }
+    return false;
 }
 
 bool AudioSource::pause() {
-	switch (status) {
-		case PLAY:
-			status = PAUSE;
-			return true;
-	}
-	return false;
+    switch (status) {
+        case PLAY:
+            status = PAUSE;
+            return true;
+    }
+    return false;
 }
 
 bool AudioSource::stop() {
-	switch (status) {
-		case PLAY:
-		case PAUSE:
-			status = STOP;
-			position = 0;
-			return true;
-	}
-	return false;
+    switch (status) {
+        case PLAY:
+        case STOP:
+        case PAUSE:
+            status = STOP;
+            position = 0;
+            return true;
+    }
+    return false;
 }
 
 bool AudioSource::finished() {
-	return (status == STOP);
+    return (status == STOP);
 }
 
 uint8_t AudioSource::getStatus() const {
-	return status;
+    return status;
 }
 
 double AudioSource::getElapsedSeconds() const {
-	return (buffer == nullptr) ? 0.0 : position / buffer->getSampleRate() / buffer->getChannelCount() / 2;
+    return (buffer == nullptr) ? 0.0 : position / buffer->getSampleRate() / buffer->getChannelCount() / 2;
 }
 
 double AudioSource::getTotalSeconds() const {
-	return (buffer == nullptr) ? 0.0 : getSampleCount() / buffer->getSampleRate();
+    return (buffer == nullptr) ? 0.0 : getSampleCount() / buffer->getSampleRate();
 }
 
 uint32_t AudioSource::getSampleCount() const {
-	if (buffer == nullptr) {
-		return 0;
-	}
+    if (buffer == nullptr) {
+        return 0;
+    }
 
-	if (buffer->getLength() == 0) {
-		return 0;
-	}
+    if (buffer->getLength() == 0) {
+        return 0;
+    }
 
-	if (buffer->getBitsPerSample() == 0) {
-		return 0;
-	}
+    if (buffer->getBitsPerSample() == 0) {
+        return 0;
+    }
 
-	if (buffer->getChannelCount() == 0) {
-		return 0;
-	}
+    if (buffer->getChannelCount() == 0) {
+        return 0;
+    }
 
-	return (buffer->getLength() / (buffer->getBitsPerSample() / 8) / buffer->getChannelCount());
+    return (buffer->getLength() / (buffer->getBitsPerSample() / 8) / buffer->getChannelCount());
 }
 
 void AudioSource::setPosition(uint32_t value) {
-	if (buffer == nullptr) {
-		return;
-	}
+    if (buffer == nullptr) {
+        return;
+    }
 
-	position = std::max(0u, std::min(buffer->getLength(), value));
-	position = (position >> 1) << 1;
+    position = std::max(0u, std::min(buffer->getLength(), value));
+    position = (position >> 1) << 1;
 
-	if (status == STOP) {
-		status = PAUSE;
-	}
-	if (position >= buffer->getLength()) {
-		status = STOP;
-	}
+    if (status == STOP) {
+        status = PAUSE;
+    }
+    if (position >= buffer->getLength()) {
+        status = STOP;
+    }
 }
 
 uint32_t AudioSource::getPosition() const {
-	return position;
+    return position;
 }
 
 void AudioSource::setProgress(float value) {
-	if (buffer == nullptr) {
-		return;
-	}
+    if (buffer == nullptr) {
+        return;
+    }
 
-	position = (float) buffer->getLength() * std::min(1.0f, std::max(0.0f, value));
-	position = (position >> 1) << 1; // align to the channel and byte count
-	position = std::min(position, buffer->getLength());
+    position = (float) buffer->getLength() * std::min(1.0f, std::max(0.0f, value));
+    position = (position >> 1) << 1; // align to the channel and byte count
+    position = std::min(position, buffer->getLength());
 
-	if (status == STOP) {
-		status = PAUSE;
-	}
+    if (status == STOP) {
+        status = PAUSE;
+    }
 }
 
 float AudioSource::getProgress() const {
-	return (buffer == nullptr) ? 0.0f : (float) position / (float) buffer->getLength();
+    return (buffer == nullptr) ? 0.0f : (float) position / (float) buffer->getLength();
 }
 
 void AudioSource::setLoop(bool value) {
-	loop = value;
+    loop = value;
 }
 
 bool AudioSource::getLoop() const {
-	return loop;
+    return loop;
 }
 
 void AudioSource::setVolume(float value) {
-	volume = std::max(0.0f, std::min(1.0f, value));
+    volume = std::max(0.0f, std::min(1.0f, value));
 }
 
 float AudioSource::getVolume() const {
-	return volume;
+    return volume;
 }
 
 void AudioSource::setPan(float value) {
-	pan = std::max(0.0f, std::min(1.0f, value));;
+    pan = std::max(0.0f, std::min(1.0f, value));;
 }
 
 float AudioSource::getPan() const {
-	return pan;
+    return pan;
 }
 
 void AudioSource::setSpeed(float value) {
-	speed = value;
+    speed = value;
 }
 
 float AudioSource::getSpeed() const {
-	return speed;
+    return speed;
 }
 
-const wchar_t* AudioSource::getName() const {
-	return name;
+const wchar_t *AudioSource::getName() const {
+    return name;
 }
 
-void AudioSource::setName(const wchar_t* value) {
-	name = value;
+void AudioSource::setName(const wchar_t *value) {
+    name = value;
 }
-
-

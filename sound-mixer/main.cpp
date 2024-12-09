@@ -7,18 +7,20 @@
 #include "AudioSource.h"
 #include "AudioMixer.h"
 #include "TrackControls.h"
+#include "AudioRecorder.h"
 
 #pragma comment(lib, "winmm.lib")
 
 #define SAMPLE_RATE 44100
 #define BITS_PER_SAMPLE 16
 #define NUM_CHANNELS 2
-#define BUFFER_SIZE 44100
+#define BUFFER_SIZE 4096
 
-AudioMixer mixer(44100, 16, 2, 8, 4096);
-HWND hLoadButton, hSaveButton, hMixButton;
+AudioMixer mixer(SAMPLE_RATE, BITS_PER_SAMPLE, NUM_CHANNELS, 8, BUFFER_SIZE);
+AudioRecorder recorder(SAMPLE_RATE, BITS_PER_SAMPLE, NUM_CHANNELS, 8, BUFFER_SIZE);
+HWND hLoadButton, hSaveButton, hStopButton, hPauseButton, hMixButton, hRecordButton;
 std::vector<TrackControls *> tracksControls;
-
+bool isSaving = false;
 
 // Обработчик сообщений для главного окна
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -28,13 +30,29 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                                         10, 10, 100, 30, hwnd, (HMENU)1,
                                         (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
 
-            hMixButton = CreateWindow("BUTTON", "Play", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+            hMixButton = CreateWindow("BUTTON", "Mix", WS_TABSTOP | WS_VISIBLE | WS_CHILD,
                                       130, 10, 100, 30, hwnd, (HMENU)2,
                                       (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
 
-            hSaveButton = CreateWindow("BUTTON", "Save", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                                       250, 10, 100, 30, hwnd, (HMENU)3,
+            hSaveButton = CreateWindow("BUTTON", "Save",
+                                       WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | BS_PUSHLIKE,
+                                       490, 10, 100, 30, hwnd, (HMENU)3,
                                        (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+
+            hRecordButton = CreateWindow("BUTTON", "Record",
+                                         WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_AUTOCHECKBOX | BS_PUSHLIKE,
+                                         610, 10, 100, 30, hwnd, (HMENU)4,
+                                         (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+
+            hStopButton = CreateWindow("BUTTON", "Stop", WS_TABSTOP | WS_VISIBLE | WS_CHILD,
+                                       250, 10, 100, 30, hwnd, (HMENU)5,
+                                       (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+
+            hPauseButton = CreateWindow("BUTTON", "Pause", WS_TABSTOP | WS_VISIBLE | WS_CHILD,
+                                        370, 10, 100, 30, hwnd, (HMENU)6,
+                                        (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+
+
             break;
         case WM_TIMER: {
             for (auto &controls: tracksControls) {
@@ -84,13 +102,61 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     break;
                 }
                 case 3: {
-                    const wchar_t *filename = L".\\output.wav";
-                    FILE* outputFile = mixer.startRecording(filename);
+                    if (!isSaving) {
+                        OPENFILENAME ofn = {};
+                        char szFileName[MAX_PATH] = "";
+                        ofn.lStructSize = sizeof(OPENFILENAME);
+                        ofn.hwndOwner = hwnd; // hwnd вашего основного окна
+                        ofn.lpstrFilter = "Wave Files (*.wav)\0*.wav\0All Files (*.*)\0*.*\0";
+                        ofn.lpstrFile = szFileName;
+                        ofn.nMaxFile = MAX_PATH;
+                        ofn.Flags = OFN_OVERWRITEPROMPT | OFN_PATHMUSTEXIST;
+                        ofn.lpstrDefExt = "wav";
 
+                        if (GetSaveFileName(&ofn)) {
+                            mixer.startRecording(szFileName);
+                            for (auto source: mixer.getSources()) {
+                                source->play();
+                            }
+                            isSaving = true;
+                        }
+                    } else {
+                        mixer.stopRecording();
+                        for (auto source: mixer.getSources()) {
+                            source->stop();
+                        }
+                        isSaving = false;
+                    }
+                    break;
+                }
+                case 4: {
+                    const wchar_t *filename = L"record.wav";
 
+                    if (!recorder.recording) {
+                        recorder.startRecording(filename);
+                    } else {
+                        recorder.stopRecording();
+
+                        auto buffer = new AudioBuffer();
+                        if (buffer->load(filename)) {
+                            auto source = mixer.create(buffer, filename);
+                            int index = tracksControls.size();
+                            auto controls = new TrackControls(hwnd, index, source);
+                            tracksControls.push_back(controls);
+                        }
+                    }
+                }
+                case 5: {
+                    for (auto source: mixer.getSources()) {
+                        source->stop();
+                    }
+                }
+                case 6: {
+                    for (auto source: mixer.getSources()) {
+                        source->pause();
+                    }
                 }
                 default: {
-                    // Передаем события кнопок элементам управления трека
                     for (auto controls: tracksControls) {
                         if (controls->IsControlRelevant(wParam)) {
                             controls->HandleCommand(wParam);

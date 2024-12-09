@@ -132,44 +132,6 @@ bool AudioBuffer::load(const wchar_t *filename) {
     return status;
 }
 
-FILE *AudioBuffer::startSave(const wchar_t *filename, AudioBuffer buffer) {
-    FILE *outputFile = _wfopen(filename, L"wb");
-
-    if (!outputFile) {
-        return nullptr;
-    }
-
-    // Запись заголовка WAV-файла (заполним позже)
-    wave::FileHeader fileHeader = {RIFF, 0, WAVE};
-    wave::FMTChunk fmtChunk = {FMT, (uint32_t) buffer.length,
-        (uint16_t) 1, buffer.getChannelCount(),
-        (uint32_t) buffer.getSampleRate(), (uint32_t) buffer.getBitsPerSample(),
-        (uint16_t) (channelCount * bitsPerSample / 8), (uint16_t) bitsPerSample
-    };
-    wave::DataChunk dataChunk = {DATA, 0};
-
-    fwrite(&fileHeader, sizeof(fileHeader), 1, outputFile);
-    fwrite(&fmtChunk, sizeof(fmtChunk), 1, outputFile);
-    fwrite(&dataChunk, sizeof(dataChunk), 1, outputFile);
-
-    return outputFile;
-}
-
-bool AudioBuffer::stopSave(FILE *outputFile) {
-    long fileSize = ftell(outputFile);
-    fseek(outputFile, 4, SEEK_SET);
-    uint32_t riffSize = fileSize - 8;
-    fwrite(&riffSize, sizeof(riffSize), 1, outputFile);
-
-    fseek(outputFile, sizeof(wave::FileHeader) + sizeof(wave::FMTChunk) + 4, SEEK_SET);
-    uint32_t dataSize = fileSize - sizeof(wave::FileHeader) - sizeof(wave::FMTChunk) - sizeof(wave::DataChunk);
-    fwrite(&dataSize, sizeof(dataSize), 1, outputFile);
-
-    fclose(outputFile);
-    return true;
-}
-
-
 void AudioBuffer::clear() {
     if (data == nullptr) {
         return;
