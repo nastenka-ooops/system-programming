@@ -1,0 +1,14 @@
+{
+    "version": 1,
+    "revision": 0,
+    "rules": [
+        {
+            "primary-output": "CMakeFiles\\sound_mixer.dir\\AudioBuffer.cpp.obj",
+            "outputs": [
+                "C:\\Users\\madam\\CLionProjects\\sys-prog\\sound-mixer\\cmake-build-debug-visual-studio\\vc140.pdb",
+                "CMakeFiles\\sound_mixer.dir\\AudioBuffer.cpp.obj.ddi"
+            ],
+            "requires": []
+        }
+    ]
+}

@@ -5,10 +5,21 @@
 #include "AudioSource.h"
 
 #include <algorithm>
+#include <filesystem>
 
-AudioSource::AudioSource(AudioBuffer *newBuffer)
-	: buffer(nullptr), position(0), volume(1.0), pan(0.5f), speed(1.0f), status(STOP), loop(false) {
+AudioSource::AudioSource(AudioBuffer *newBuffer, const wchar_t* name)
+	: buffer(nullptr), position(0), volume(0.5), pan(0.5f), speed(1.0f), status(STOP), loop(false) {
 	setBuffer(newBuffer);
+
+	std::wstring pathStr(name);
+
+	size_t pos = pathStr.find_last_of(L"\\/");
+
+	if (pos != std::wstring::npos) {
+		pathStr = pathStr.substr(pos + 1);
+	}
+
+	setName(pathStr.data());
 }
 
 AudioSource::~AudioSource() {
@@ -163,3 +174,13 @@ void AudioSource::setSpeed(float value) {
 float AudioSource::getSpeed() const {
 	return speed;
 }
+
+const wchar_t* AudioSource::getName() const {
+	return name;
+}
+
+void AudioSource::setName(const wchar_t* value) {
+	name = value;
+}
+
+

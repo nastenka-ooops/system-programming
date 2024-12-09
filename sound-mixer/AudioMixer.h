@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "AudioSource.h"
+#include "AudioBuffer.h"
 
 #define AUDIO_MIXER_MAX_SOURCE_COUNT 16
 
@@ -46,6 +47,9 @@ class AudioMixer {
     pthread_t audioThread;
     volatile bool ready;
 
+    AudioBuffer* outputFileBuffer;
+    bool isRecorded;
+
     bool create(uint32_t sampleRate, uint16_t bitsPerSample, uint16_t channels, uint8_t nblockCount, uint32_t nchunkSize);
     void destroy();
 public:
@@ -53,13 +57,18 @@ public:
 
     ~AudioMixer();
 
-    AudioSource* create(AudioBuffer* audioBuffer);
+    std::vector<AudioSource*> getSources();
 
-    AudioSource* create(const char* filename);
+    AudioSource* create(AudioBuffer* audioBuffer, const wchar_t* name);
+
+    AudioSource* create(const wchar_t*);
 
     AudioSource* play(AudioBuffer* audioBuffer);
 
-    AudioSource* play(const char* filename);
+    AudioSource* play(const wchar_t* filename);
+
+    FILE* startRecording(const wchar_t* filename);
+    void stopRecording(FILE* outputFile);
 };
 
 #endif // __SOUND_MIXER_H__

@@ -5,8 +5,9 @@
 #ifndef AUDIOBUFFFER_H
 #define AUDIOBUFFFER_H
 
-
+#include <Windows.h>
 #include <cstdint>
+#include <cstdio>
 
 class AudioBuffer {
     uint8_t* data;
@@ -22,7 +23,10 @@ public:
 
     uint8_t* create(uint32_t length, uint32_t sampleRate = 44100, uint16_t bitsPerSample = 16, uint16_t channelCount = 1);
 
-    bool load(const char* filename);
+    bool load(const wchar_t* filename);
+
+    FILE* startSave(const wchar_t* filename);
+    bool stopSave(FILE* outputFile);
 
     void clear();
 

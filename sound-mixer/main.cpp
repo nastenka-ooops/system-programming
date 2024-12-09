@@ -3,8 +3,10 @@
 #include <iostream>
 #include <cstdio>
 
-#include "AudioBufffer.h"
+#include "AudioBuffer.h"
+#include "AudioSource.h"
 #include "AudioMixer.h"
+#include "TrackControls.h"
 
 #pragma comment(lib, "winmm.lib")
 
@@ -13,44 +15,88 @@
 #define NUM_CHANNELS 2
 #define BUFFER_SIZE 44100
 
+AudioMixer mixer(44100, 16, 2, 8, 4096);
+HWND hLoadButton, hSaveButton, hMixButton;
+std::vector<TrackControls *> tracksControls;
+
+
 // Обработчик сообщений для главного окна
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
         case WM_CREATE:
-            CreateWindow("BUTTON", "Play", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
-                         50, 100, 150, 30, hwnd, (HMENU)2, (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+            hLoadButton = CreateWindowW(L"BUTTON", L"Load", WS_CHILD | WS_VISIBLE,
+                                        10, 10, 100, 30, hwnd, (HMENU)1,
+                                        (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+
+            hMixButton = CreateWindow("BUTTON", "Play", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+                                      130, 10, 100, 30, hwnd, (HMENU)2,
+                                      (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
+
+            hSaveButton = CreateWindow("BUTTON", "Save", WS_TABSTOP | WS_VISIBLE | WS_CHILD | BS_DEFPUSHBUTTON,
+                                       250, 10, 100, 30, hwnd, (HMENU)3,
+                                       (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
             break;
+        case WM_TIMER: {
+            for (auto &controls: tracksControls) {
+                controls->UpdateProgressBar();
+            }
+            break;
+        }
+        case WM_HSCROLL: {
+            // Передача обработки события изменения позиции прогресс-бара
+            for (auto &controls: tracksControls) {
+                if (controls->IsControlRelevant((WPARAM) GetDlgCtrlID((HWND) lParam))) {
+                    controls->HandleScroll((HWND) lParam);
+                }
+            }
+            break;
+        }
         case WM_COMMAND: {
             switch (LOWORD(wParam)) {
+                case 1: {
+                    OPENFILENAMEW ofn;
+                    WCHAR filename[260] = {};
+                    ZeroMemory(&ofn, sizeof(ofn));
+                    ofn.lStructSize = sizeof(ofn);
+                    ofn.hwndOwner = hwnd;
+                    ofn.lpstrFile = filename;
+                    ofn.nMaxFile = MAX_PATH;
+                    ofn.lpstrFilter = L"WAV Files\0*.wav\0";
+                    ofn.Flags = OFN_FILEMUSTEXIST | OFN_HIDEREADONLY;
+
+                    if (GetOpenFileNameW(&ofn)) {
+                        auto buffer = new AudioBuffer();
+                        if (buffer->load(filename)) {
+                            auto source = mixer.create(buffer, filename);
+                            int index = tracksControls.size();
+                            auto controls = new TrackControls(hwnd, index, source);
+                            tracksControls.push_back(controls);
+                        } else {
+                            MessageBox(hwnd, "Ошибка загрузки файла!", "Ошибка", MB_ICONERROR);
+                        }
+                    }
+                    break;
+                }
                 case 2: {
-                    static const int PROGRESS_BAR_LENGTH = 20;
-                    const char* filename = "C:/Users/madam/CLionProjects/sys-prog/sound-mixer/sample-3s.wav";
-                    const char* filename2 = "C:/Users/madam/CLionProjects/sys-prog/sound-mixer/test.wav";
-
-                    AudioMixer mixer(44100, 16, 2, 8, 4096);
-
-                    AudioSource* source = mixer.play(filename2);
-                    mixer.play(filename);
-                    if (source == NULL) {
-                        printf("Failed to load '%s'.\n", filename);
-                        return 1;
+                    for (auto source: mixer.getSources()) {
+                        source->play();
                     }
+                    break;
+                }
+                case 3: {
+                    const wchar_t *filename = L".\\output.wav";
+                    FILE* outputFile = mixer.startRecording(filename);
 
-                    printf("Filename  '%s'\n", filename);
-                    printf("Duration  %.2d:%.2d\n", (int)source->getTotalSeconds() / 60, (int)source->getTotalSeconds() % 60);
-                    printf("Volume    %.2f\n", source->getVolume());
-                    printf("Pan       %.2f\n", source->getPan());
-                    printf("Speed     %.2fx\n", source->getSpeed());
 
-                    while (!source->finished()) {
-                        const float progress = source->getProgress();
-                        const int left = progress * PROGRESS_BAR_LENGTH;
-                        const int right = PROGRESS_BAR_LENGTH - left;
-                        printf("\33[2K\rProgress  [%*s%*s", left, "*", right, "]");
-                        _sleep(10);
+                }
+                default: {
+                    // Передаем события кнопок элементам управления трека
+                    for (auto controls: tracksControls) {
+                        if (controls->IsControlRelevant(wParam)) {
+                            controls->HandleCommand(wParam);
+                            break;
+                        }
                     }
-                    printf("\nFinished playing\n");
-
                     break;
                 }
             }
@@ -60,8 +106,10 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
             PostQuitMessage(0);
             return 0;
     }
+
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
+
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     WNDCLASSEX wcex;
@@ -82,8 +130,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     RegisterClassEx(&wcex);
     hWnd = CreateWindow("sound-mixer", "sound-mixer",
-                        WS_OVERLAPPEDWINDOW, 300, 100,
-                        500, 400, nullptr, nullptr, hInstance, nullptr);
+                        WS_OVERLAPPEDWINDOW, 50, 50,
+                        1200, 600, nullptr, nullptr, hInstance, nullptr);
 
     if (hWnd == nullptr) {
         MessageBox(nullptr, "Window creation failed!", "Error", MB_OK | MB_ICONERROR);

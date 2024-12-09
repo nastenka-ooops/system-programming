@@ -5,11 +5,13 @@ set(CMAKE_CXX_STANDARD 20)
 
 add_executable(sound_mixer main.cpp
         AudioBuffer.cpp
-        AudioBufffer.h
+        AudioBuffer.h
         AudioMixer.cpp
         AudioMixer.h
         AudioSource.cpp
-        AudioSource.h)
+        AudioSource.h
+        TrackControls.h
+        TrackControls.cpp)
 
 target_link_libraries(sound_mixer winmm)
 

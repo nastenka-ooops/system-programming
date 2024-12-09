@@ -5,11 +5,13 @@
 #ifndef AUDIOSOURCE_H
 #define AUDIOSOURCE_H
 
-#include "AudioBufffer.h"
+#include "AudioBuffer.h"
 
 class AudioSource {
     AudioBuffer* buffer;
     uint32_t position;
+
+    const wchar_t* name;
 
     float volume;
     float pan;
@@ -20,11 +22,11 @@ class AudioSource {
 
     friend class AudioMixer;
 
-    AudioSource(AudioBuffer* buffer = nullptr);
-
+public:
     ~AudioSource();
 
-public:
+    explicit AudioSource(AudioBuffer* buffer = nullptr, const wchar_t* name = nullptr);
+
     enum {
         STOP,
         PLAY,
@@ -82,6 +84,10 @@ public:
     void setSpeed(float value);
 
     float getSpeed() const;
+
+    const wchar_t* getName() const;
+
+    void setName(const wchar_t* value);
 };
 
 #endif //AUDIOSOURCE_H
