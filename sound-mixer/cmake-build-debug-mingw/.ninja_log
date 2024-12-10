@@ -53,3 +53,16 @@
 45	3247	7555552166557141	CMakeFiles/sound_mixer.dir/main.cpp.obj	1712f12cc6e1e799
 3248	3459	7555552198580293	sound_mixer.exe	447d343a051a4ec3
 37	2790	7555552538385661	CMakeFiles/sound_mixer.dir/main.cpp.obj	1712f12cc6e1e799
+43	920	7555590129274532	CMakeFiles/sound_mixer.dir/Utils.cpp.obj	f199a137bd910761
+27	2696	7555590129114925	CMakeFiles/sound_mixer.dir/TrackControls.cpp.obj	47161f3ef10aaeff
+35	3074	7555590129194534	CMakeFiles/sound_mixer.dir/AudioRecorder.cpp.obj	5197cf20f4168fce
+19	3095	7555590129034417	CMakeFiles/sound_mixer.dir/AudioMixer.cpp.obj	604316b2324a172c
+9	3348	7555590128943685	CMakeFiles/sound_mixer.dir/main.cpp.obj	1712f12cc6e1e799
+3348	3589	7555590162326525	sound_mixer.exe	447d343a051a4ec3
+13	3204	7555597024695785	CMakeFiles/sound_mixer.dir/main.cpp.obj	1712f12cc6e1e799
+3205	3418	7555597056610355	sound_mixer.exe	447d343a051a4ec3
+36	2328	7555599336861814	CMakeFiles/sound_mixer.dir/TrackControls.cpp.obj	47161f3ef10aaeff
+28	2924	7555599336781880	CMakeFiles/sound_mixer.dir/main.cpp.obj	1712f12cc6e1e799
+2924	3145	7555599365735289	sound_mixer.exe	447d343a051a4ec3
+28	2087	7555599746405477	CMakeFiles/sound_mixer.dir/TrackControls.cpp.obj	47161f3ef10aaeff
+2089	2282	7555599767020462	sound_mixer.exe	447d343a051a4ec3

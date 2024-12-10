@@ -21,7 +21,7 @@ HWND hWnd;
 HWND hLoadButton, hSaveButton, hStopButton, hPauseButton, hMixButton, hRecordButton;
 std::vector<TrackControls *> tracksControls;
 bool isSaving = false;
-
+int id = 0;
 
 // Обработчик сообщений для главного окна
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -120,8 +120,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         auto buffer = new AudioBuffer();
                         if (buffer->load(filename)) {
                             auto source = mixer.create(buffer, filename);
-                            int index = tracksControls.size();
-                            auto controls = new TrackControls(hwnd, index, source);
+                            auto controls = new TrackControls(hwnd, id++, tracksControls.size(), source);
                             tracksControls.push_back(controls);
                         } else {
                             MessageBox(hwnd, "Ошибка загрузки файла!", "Ошибка", MB_ICONERROR);
@@ -174,8 +173,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                         auto buffer = new AudioBuffer();
                         if (buffer->load(filename)) {
                             auto source = mixer.create(buffer, filename);
-                            int index = tracksControls.size();
-                            auto controls = new TrackControls(hwnd, index, source);
+                            auto controls = new TrackControls(hwnd, id++, tracksControls.size(), source);
                             tracksControls.push_back(controls);
                         }
                     }

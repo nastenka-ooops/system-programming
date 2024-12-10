@@ -21,7 +21,7 @@ class TrackControls {
 public:
     int index;
 
-    TrackControls(HWND parent, int yOffset, AudioSource *source);
+    TrackControls(HWND parent, int id, int yOffset, AudioSource *source);
 
     ~TrackControls();
 

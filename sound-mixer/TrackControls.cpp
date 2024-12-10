@@ -2,23 +2,23 @@
 #include <algorithm>
 
 
-TrackControls::TrackControls(HWND parent, int index, AudioSource *source)
+TrackControls::TrackControls(HWND parent, int id, int index, AudioSource *source)
     : hParent(parent), source(source) {
-    this->index = index;
+    this->index = id;
 
     int yOffset = 70 + index * 75;
 
     HINSTANCE hInst = (HINSTANCE) GetWindowLongPtr(parent, GWLP_HINSTANCE);
 
-    playButtonId = 1000 + index * 10 + 0;
-    pauseButtonId = 1000 + index * 10 + 1;
-    stopButtonId = 1000 + index * 10 + 2;
-    progressBarId = 1000 + index * 10 + 3;
-    volumeBarId = 1000 + index * 10 + 4;
-    speedBarId = 1000 + index * 10 + 5;
-    panBarId = 1000 + index * 10 + 6;
-    loopButtonId = 1000 + index * 10 + 7;
-    deleteButtonId = 1000 + index * 10 + 8;
+    playButtonId = 1000 + id * 10 + 0;
+    pauseButtonId = 1000 + id * 10 + 1;
+    stopButtonId = 1000 + id * 10 + 2;
+    progressBarId = 1000 + id * 10 + 3;
+    volumeBarId = 1000 + id * 10 + 4;
+    speedBarId = 1000 + id * 10 + 5;
+    panBarId = 1000 + id * 10 + 6;
+    loopButtonId = 1000 + id * 10 + 7;
+    deleteButtonId = 1000 + id * 10 + 8;
 
     // Track title
     hTrackTitle = CreateWindowW(L"STATIC", source->getName(), WS_CHILD | WS_VISIBLE,
