@@ -1,12 +1,7 @@
 #include "AudioMixer.h"
 #include <cstdio>
+#include <utility>
 #include "Utils.h"
-
-static bool WaveOutSetVolume(HWAVEOUT waveOut, float volume, float pan) {
-    const uint16_t leftChannel = (uint16_t) ((float) 0xFFFF * volume * pan);
-    const uint16_t rightChannel = (uint16_t) ((float) 0xFFFF * volume * (1.0f - pan));
-    return (waveOutSetVolume(waveOut, leftChannel << 16 | rightChannel) == MMSYSERR_NOERROR);
-}
 
 void CALLBACK waveOutProc(HWAVEOUT hwo, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR dwParam1, DWORD_PTR dwParam2) {
     AudioMixer *mixer = (AudioMixer *) dwInstance;
@@ -193,6 +188,11 @@ AudioSource *AudioMixer::play(const wchar_t *filename) {
 std::vector<AudioSource *> AudioMixer::getSources() {
     return sources;
 }
+
+void AudioMixer::setSources(std::vector<AudioSource*> value) {
+    sources=std::move(value);
+}
+
 
 bool AudioMixer::startRecording(const std::string &filename) {
     if (outputFile.is_open()) {

@@ -1,11 +1,8 @@
-//
-// Created by madam on 09.12.2024.
-//
-
 #ifndef AUDIORECORDER_H
 #define AUDIORECORDER_H
 #include <atomic>
-#include <condition_variable>
+#include <windows.h>
+#include <fstream>
 #include <vector>
 
 class AudioRecorder {
@@ -14,6 +11,7 @@ class AudioRecorder {
     WAVEFORMATEX waveFormat;
     std::vector<WAVEHDR> waveHeaders;
     uint8_t *buffer;
+
     uint32_t blockSize;
     uint8_t blockCount;
 
@@ -32,3 +30,4 @@ public:
 };
 
 #endif //AUDIORECORDER_H
+

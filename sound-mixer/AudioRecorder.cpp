@@ -1,9 +1,3 @@
-#include <algorithm>
-#include <windows.h>
-#include <fstream>
-#include <condition_variable>
-#include <mutex>
-
 #include "Utils.h"
 #include "AudioRecorder.h"
 
@@ -20,7 +14,6 @@ void CALLBACK waveInProc(HWAVEIN hwi, UINT uMsg, DWORD_PTR dwInstance, DWORD_PTR
             }
 
             waveInAddBuffer(hwi, header, sizeof(WAVEHDR));
-            //recorder->cv.notify_one();
             break;
         }
     }
@@ -79,7 +72,6 @@ bool AudioRecorder::startRecording(const wchar_t *filename) {
     recording = true;
     totalDataWritten = 0;
 
-    // Write a placeholder WAV header
     outputFile.seekp(44, std::ios::beg);
 
     waveInStart(waveIn);
@@ -92,7 +84,6 @@ void AudioRecorder::stopRecording() {
 
         waveInStop(waveIn);
 
-        // Update WAV header
         if (outputFile.is_open()) {
             WriteWavHeader(outputFile, waveFormat.nSamplesPerSec, waveFormat.wBitsPerSample, waveFormat.nChannels,
                            totalDataWritten);

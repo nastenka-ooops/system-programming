@@ -1,7 +1,3 @@
-//
-// Created by madam on 09.12.2024.
-//
-
 #include "Utils.h"
 
 void WriteWavHeader(std::ofstream &file, uint32_t sampleRate, uint16_t bitsPerSample, uint16_t channels, uint32_t dataSize) {

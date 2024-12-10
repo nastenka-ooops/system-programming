@@ -2,12 +2,10 @@
 // Created by madam on 06.12.2024.
 //
 
-#ifndef __AUDIOMIXER_H__
-#define __AUDIOMIXER_H__
+#ifndef AUDIOMIXER_H
+#define AUDIOMIXER_H
 
-#if defined(_WIN32)
 #include <windows.h>
-#endif // _WIN32
 
 #include <cstdint>
 #include <fstream>
@@ -20,15 +18,13 @@
 #define AUDIO_MIXER_MAX_SOURCE_COUNT 16
 
 class AudioMixer {
-#if defined(_WIN32)
+
     HWAVEOUT waveOut;
     WAVEFORMATEX waveFormat;
     WAVEHDR* waveHeaders;
     friend void CALLBACK waveOutProc(HWAVEOUT, UINT, DWORD_PTR, DWORD_PTR, DWORD_PTR);
     friend void* AudioThreadProc(void*);
-#else
 
-#endif // _WIN32
     uint8_t* waveHeaderBuffer;
     int32_t* accumulator;
 
@@ -60,6 +56,8 @@ public:
 
     std::vector<AudioSource*> getSources();
 
+    void setSources(std::vector<AudioSource*>);
+
     AudioSource* create(AudioBuffer* audioBuffer, const wchar_t* name);
 
     AudioSource* create(const wchar_t*);
@@ -72,4 +70,4 @@ public:
     void stopRecording();
 };
 
-#endif // __SOUND_MIXER_H__
+#endif // AUDIOMIXER_H

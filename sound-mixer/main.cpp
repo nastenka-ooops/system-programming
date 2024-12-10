@@ -1,7 +1,6 @@
 #include <windows.h>
 #include <mmsystem.h>
 #include <iostream>
-#include <cstdio>
 
 #include "AudioBuffer.h"
 #include "AudioSource.h"
@@ -18,14 +17,16 @@
 
 AudioMixer mixer(SAMPLE_RATE, BITS_PER_SAMPLE, NUM_CHANNELS, 8, BUFFER_SIZE);
 AudioRecorder recorder(SAMPLE_RATE, BITS_PER_SAMPLE, NUM_CHANNELS, 8, BUFFER_SIZE);
+HWND hWnd;
 HWND hLoadButton, hSaveButton, hStopButton, hPauseButton, hMixButton, hRecordButton;
 std::vector<TrackControls *> tracksControls;
 bool isSaving = false;
 
+
 // Обработчик сообщений для главного окна
 LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     switch (uMsg) {
-        case WM_CREATE:
+        case WM_CREATE: {
             hLoadButton = CreateWindowW(L"BUTTON", L"Load", WS_CHILD | WS_VISIBLE,
                                         10, 10, 100, 30, hwnd, (HMENU)1,
                                         (HINSTANCE)GetWindowLongPtr(hwnd, GWLP_HINSTANCE), NULL);
@@ -54,6 +55,7 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
 
 
             break;
+        }
         case WM_TIMER: {
             for (auto &controls: tracksControls) {
                 controls->UpdateProgressBar();
@@ -67,6 +69,38 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     controls->HandleScroll((HWND) lParam);
                 }
             }
+            break;
+        }
+        case WM_USER + 1: {
+            int trackIndex = (int) wParam;
+
+            // Удалите трек с указанным индексом
+            if (trackIndex < 0 || trackIndex >= tracksControls.size())
+                break;
+
+            // Удаляем объект TrackControls
+            std::vector<AudioSource *> sources = mixer.getSources();
+
+            delete sources[trackIndex];
+            sources.erase(sources.begin() + trackIndex);
+
+            mixer.setSources(sources);
+
+            std::vector<TrackControls *> controls = tracksControls;
+
+            delete controls[trackIndex];
+            controls.erase(controls.begin() + trackIndex);
+
+            tracksControls = controls;
+
+            // Создаем элементы заново с новыми индексами
+            for (int i = 0; i < tracksControls.size(); ++i) {
+                tracksControls[i]->UpdatePosition(i);
+            }
+
+            // Перерисовываем окно
+            InvalidateRect(hWnd, NULL, TRUE);
+
             break;
         }
         case WM_COMMAND: {
@@ -96,8 +130,8 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     break;
                 }
                 case 2: {
-                    for (auto source: mixer.getSources()) {
-                        source->play();
+                    for (auto controls: tracksControls) {
+                        controls->HandlePlayCommand();
                     }
                     break;
                 }
@@ -157,9 +191,9 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
                     }
                 }
                 default: {
-                    for (auto controls: tracksControls) {
-                        if (controls->IsControlRelevant(wParam)) {
-                            controls->HandleCommand(wParam);
+                    for (int i = 0; i < tracksControls.size(); i++) {
+                        if (tracksControls.at(i)->IsControlRelevant(wParam)) {
+                            tracksControls.at(i)->HandleCommand(wParam, i);
                             break;
                         }
                     }
@@ -176,7 +210,6 @@ LRESULT CALLBACK WindowProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) 
     return DefWindowProc(hwnd, uMsg, wParam, lParam);
 }
 
-
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
     WNDCLASSEX wcex;
     HWND hWnd;
@@ -189,15 +222,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     wcex.hInstance = hInstance;
     wcex.hIcon = LoadIcon(nullptr, IDI_APPLICATION);
     wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground = (HBRUSH) (COLOR_WINDOW + 1);
+    wcex.hbrBackground = CreateSolidBrush(RGB(194, 194, 194));
     wcex.lpszMenuName = nullptr;
     wcex.lpszClassName = "sound-mixer";
     wcex.hIconSm = wcex.hIcon;
 
     RegisterClassEx(&wcex);
     hWnd = CreateWindow("sound-mixer", "sound-mixer",
-                        WS_OVERLAPPEDWINDOW, 50, 50,
-                        1200, 600, nullptr, nullptr, hInstance, nullptr);
+                        WS_OVERLAPPEDWINDOW | WS_VSCROLL | WS_EX_COMPOSITED | WS_CLIPCHILDREN, 20, 50,
+                        1250, 600, nullptr, nullptr, hInstance, nullptr);
 
     if (hWnd == nullptr) {
         MessageBox(nullptr, "Window creation failed!", "Error", MB_OK | MB_ICONERROR);

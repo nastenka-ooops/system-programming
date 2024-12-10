@@ -1,32 +1,43 @@
-//
-// Created by madam on 07.12.2024.
-//
-
 #ifndef TRACKCONTROLS_H
 #define TRACKCONTROLS_H
 
 #include "AudioSource.h"
-#include <Windows.h>
 
-#include "commctrl.h"
+#include <vector>
+#include <Windows.h>
+#include <commctrl.h>
 
 class TrackControls {
     HWND hParent;
-    HWND hTrackTitle, hPlayButton, hStopButton, hPauseButton, hLoopButton,
+    HWND hTrackTitle, hPlayButton, hStopButton, hPauseButton, hLoopButton, hDeleteButton,
             hProgressBar, hVolumeBar, hSpeedBar, hPanBar;
+    std::vector<HWND> staticLabels;
+
     AudioSource *source;
-    int playButtonId, pauseButtonId, stopButtonId, loopButtonId,
+    int playButtonId, pauseButtonId, stopButtonId, loopButtonId, deleteButtonId,
             progressBarId, volumeBarId, speedBarId, panBarId;
     UINT_PTR timerId;
 
 public:
+    int index;
+
     TrackControls(HWND parent, int yOffset, AudioSource *source);
 
     ~TrackControls();
 
-    void HandleCommand(WPARAM wParam);
+    AudioSource* getSource();
+
+    void UpdatePosition(int newIndex);
+
+    void HandleCommand(WPARAM wParam, int i);
 
     void HandleScroll(HWND lParam);
+
+    void HandlePlayCommand();
+
+    void HandleStopCommand();
+
+    void HandlePauseCommand();
 
     bool IsControlRelevant(WPARAM wParam);
 

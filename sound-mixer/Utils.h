@@ -1,7 +1,3 @@
-//
-// Created by madam on 09.12.2024.
-//
-
 #ifndef UTILS_H
 #define UTILS_H
 

@@ -1,11 +1,6 @@
-//
-// Created by madam on 06.12.2024.
-//
-
 #ifndef AUDIOBUFFFER_H
 #define AUDIOBUFFFER_H
 
-#include <Windows.h>
 #include <cstdint>
 #include <cstdio>
 
@@ -41,5 +36,4 @@ public:
     uint8_t* getData() const;
 };
 
-
-#endif //AUDIOBUFFFER_H
+#endif // AUDIOBUFFFER_H

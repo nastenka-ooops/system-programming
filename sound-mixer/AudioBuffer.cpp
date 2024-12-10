@@ -1,6 +1,3 @@
-//
-// Created by madam on 06.12.2024.
-//
 #include "AudioBuffer.h"
 
 #include <cstdio>

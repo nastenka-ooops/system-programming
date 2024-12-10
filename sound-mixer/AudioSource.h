@@ -1,7 +1,3 @@
-//
-// Created by madam on 06.12.2024.
-//
-
 #ifndef AUDIOSOURCE_H
 #define AUDIOSOURCE_H
 
