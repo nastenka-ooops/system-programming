@@ -1,4 +1,4 @@
-<mxfile modified="2024-12-10T22:20:46.536Z" host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.5.1 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="wEoP8cJVuSszbC_xNQzU" version="24.5.1" type="device">
+<mxfile modified="2024-12-10T23:09:26.329Z" host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/24.5.1 Chrome/124.0.6367.207 Electron/30.0.6 Safari/537.36" etag="1bn52dDntezxka6ofHIV" version="24.5.1" type="device" pages="2">
   <diagram id="b_TIV87pcosbFDb4-95I" name="Page-1">
     <mxGraphModel dx="5413" dy="3713" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="3300" pageHeight="2339" math="0" shadow="0">
       <root>
@@ -814,6 +814,14 @@
           <mxGeometry x="2780" y="2160" width="40" height="20" as="geometry" />
         </mxCell>
         <mxCell id="U5MXIK-24vMOK5HsXXuc-119" value="Выноска" parent="0" />
+      </root>
+    </mxGraphModel>
+  </diagram>
+  <diagram id="rpX92qBthB8rFOorP5xv" name="Страница — 2">
+    <mxGraphModel grid="1" page="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" pageScale="1" pageWidth="3300" pageHeight="2339" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
       </root>
     </mxGraphModel>
   </diagram>

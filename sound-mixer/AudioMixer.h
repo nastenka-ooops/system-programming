@@ -1,7 +1,3 @@
-//
-// Created by madam on 06.12.2024.
-//
-
 #ifndef AUDIOMIXER_H
 #define AUDIOMIXER_H
 
